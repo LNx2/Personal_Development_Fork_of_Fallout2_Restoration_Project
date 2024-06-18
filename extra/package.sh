@@ -88,7 +88,7 @@ popd
 mv "$release_dir/${mod_name}_${vversion}.zip" .
 
 # exe installer
-"$extra_dir"/package/inno.sh
+## "$extra_dir"/package/inno.sh
 
 # cleanup for local build
 git checkout -- data/text release extra/inno/inno.iss
