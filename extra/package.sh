@@ -41,7 +41,7 @@ fi
 
 # translations packaged first, to get extra text out of the way
 # shellcheck disable=SC2154  # extra_dir from env.sh
-"$extra_dir"/package/translations.sh
+## "$extra_dir"/package/translations.sh
 
 # data
 # shellcheck disable=SC2154  # from env.sh
