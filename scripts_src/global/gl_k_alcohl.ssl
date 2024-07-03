@@ -14,6 +14,7 @@ variable msg;
 #define TIME_ALCOHOL_USAGE_MEDIUM (3*ONE_GAME_DAY)
 #define TIME_ALCOHOLIC_SHAKES (2*ONE_GAME_DAY)
 #define TIME_DURATION_OF_ADDICTION ONE_GAME_WEEK
+#define TIME_DURATION_FOR_GLOBAL_TIMER ONE_GAME_DAY
 #define INTERFACE_TAG_ADDICT 4
 
 #define MSG_FILE "k_alcohl.msg"
@@ -85,6 +86,7 @@ procedure drink(variable who, variable item) begin
     if not is_iface_tag_active(INTERFACE_TAG_ADDICT) then show_iface_tag(INTERFACE_TAG_ADDICT);
     set_global_var(GVAR_ALCOHOL_ADDICT, 1);
     set_sfall_global(SGVAR_time_of_alcohol_addiction, game_time);
+    add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, 0);
     timer_shakes = game_time;
 end
 
@@ -101,6 +103,12 @@ procedure use_obj_handler begin
     variable item = get_sfall_arg_at(1);
     call drink(who, item);
 end
+
+
+procedure timed_event_p_proc begin
+    display_msg("<test> timed_event_p_proc has been run, "+fixed_param);
+end
+
 
 procedure start begin
     // loading
