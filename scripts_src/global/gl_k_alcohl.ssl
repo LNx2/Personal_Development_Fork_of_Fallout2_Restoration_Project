@@ -9,6 +9,7 @@ procedure start;
 variable time_passed_since_last_consumption;
 variable msg;
 variable time_of_addiction;
+variable time_for_next_global_timer;
 
 #define TIME_ALCOHOL_USAGE_SPORADIC ONE_GAME_WEEK
 #define TIME_ALCOHOL_USAGE_MEDIUM (3*ONE_GAME_DAY)
@@ -164,6 +165,12 @@ procedure start begin
         register_hook_proc(HOOK_USEOBJON, use_obj_on_obj_handler);
         register_hook_proc(HOOK_USEOBJ, use_obj_handler);
         variable time_of_addiction;
+
+        if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then begin
+            time_for_next_global_timer = ( game_time - get_sfall_global_int(SGVAR_time_of_alcohol_addiction) ) % TIME_DURATION_FOR_GLOBAL_TIMER ;
+            add_global_timer_event(time_for_next_global_timer, 0);
+        end
+
         ndebug("initialized");
         return;
     end
