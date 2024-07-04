@@ -6,9 +6,9 @@
 
 procedure start;
 
-variable count;
 variable time_passed_since_last_consumption;
 variable msg;
+variable time_of_addiction;
 
 #define TIME_ALCOHOL_USAGE_SPORADIC ONE_GAME_WEEK
 #define TIME_ALCOHOL_USAGE_MEDIUM (3*ONE_GAME_DAY)
@@ -107,22 +107,36 @@ end
 procedure timed_event_p_proc begin
     display_msg("<test> timed_event_p_proc has been run, "+fixed_param);
 
+    // no addiction, skip run
+    if (global_var(GVAR_ALCOHOL_ADDICT) != 1) then return;
+
+    // Below: has addiction
     time_passed_since_last_consumption = ( 1.0*( game_time - get_sfall_global_int(SGVAR_time_of_alcohol_addiction) ) ) / (TIME_ALCOHOLIC_SHAKES);
     // shakes
     display_msg("<test> value of the time_passed_since_last_consumption variable is:"+time_passed_since_last_consumption);
     if ((time_passed_since_last_consumption > 0.9) and (time_passed_since_last_consumption < 1.1) ) then begin
         if in_world_map then force_encounter(0);
         display_mymsg(MSG_shakes);
-    end
-    if ((time_passed_since_last_consumption > 1.9) and (time_passed_since_last_consumption < 2.1) ) then begin
+    end else if ((time_passed_since_last_consumption > 1.9) and (time_passed_since_last_consumption < 2.1) ) then begin
+        if in_world_map then force_encounter(0);
+        display_mymsg(MSG_cravings);
+    end else if ((time_passed_since_last_consumption > 2.9) and (time_passed_since_last_consumption < 3.1) ) then begin
         if in_world_map then force_encounter(0);
         display_mymsg(MSG_cravings);
     end
-    if ((time_passed_since_last_consumption > 2.9) and (time_passed_since_last_consumption < 3.1) ) then begin
-        if in_world_map then force_encounter(0);
-        display_mymsg(MSG_cravings);
+
+    // relief
+    time_of_addiction = get_sfall_global_int(SGVAR_time_of_alcohol_addiction);
+    if ((game_time - time_of_addiction) >= TIME_DURATION_OF_ADDICTION) then begin
+        set_global_var(GVAR_ALCOHOL_ADDICT, 0);
+        set_critter_stat(dude_obj, STAT_ag, 1);
+        set_critter_stat(dude_obj, STAT_ch, 1);
+        display_mymsg(MSG_relieved);
+        if not dude_trait(TRAIT_drug_addict) then hide_iface_tag(INTERFACE_TAG_ADDICT);
     end
-    if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, 0); 
+
+    // if still addicted, set timer for next procedure run
+    if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, 0);
 
 end
 
@@ -132,9 +146,7 @@ procedure start begin
     if is_loading_game then return;
     // init script once
     if game_loaded then begin
-        set_global_script_repeat(60);
         set_global_script_type(3);
-        count = 0;
         msg = add_extra_msg_file(MSG_FILE);
         register_hook_proc(HOOK_USEOBJON, use_obj_on_obj_handler);
         register_hook_proc(HOOK_USEOBJ, use_obj_handler);
@@ -142,22 +154,4 @@ procedure start begin
         ndebug("initialized");
         return;
     end
-    // no addiction, skip run
-    if (global_var(GVAR_ALCOHOL_ADDICT) != 1) then return;
-
-    // Below: has addiction
-
-    time_of_addiction = get_sfall_global_int(SGVAR_time_of_alcohol_addiction);
-
-
-    // relief
-    if ((game_time - time_of_addiction) >= TIME_DURATION_OF_ADDICTION) then begin
-        set_global_var(GVAR_ALCOHOL_ADDICT, 0);
-        set_critter_stat(dude_obj, STAT_ag, 1);
-        set_critter_stat(dude_obj, STAT_ch, 1);
-        display_mymsg(MSG_relieved);
-        if not dude_trait(TRAIT_drug_addict) then hide_iface_tag(INTERFACE_TAG_ADDICT);
-        count = 0;                                    // resetting the counter for the next addiction cycle
-    end
-
 end
