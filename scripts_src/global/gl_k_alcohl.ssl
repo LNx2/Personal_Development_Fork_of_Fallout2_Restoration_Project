@@ -7,7 +7,7 @@
 procedure start;
 
 variable count;
-variable timer_shakes;
+variable time_passed_since_last_consumption;
 variable msg;
 
 #define TIME_ALCOHOL_USAGE_SPORADIC ONE_GAME_WEEK
@@ -87,7 +87,6 @@ procedure drink(variable who, variable item) begin
     set_global_var(GVAR_ALCOHOL_ADDICT, 1);
     set_sfall_global(SGVAR_time_of_alcohol_addiction, game_time);
     add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, 0);
-    timer_shakes = game_time;
 end
 
 // Use from main game window (hands)
@@ -107,6 +106,24 @@ end
 
 procedure timed_event_p_proc begin
     display_msg("<test> timed_event_p_proc has been run, "+fixed_param);
+
+    time_passed_since_last_consumption = ( 1.0*( game_time - get_sfall_global_int(SGVAR_time_of_alcohol_addiction) ) ) / (TIME_ALCOHOLIC_SHAKES);
+    // shakes
+    display_msg("<test> value of the time_passed_since_last_consumption variable is:"+time_passed_since_last_consumption);
+    if ((time_passed_since_last_consumption > 0.9) and (time_passed_since_last_consumption < 1.1) ) then begin
+        if in_world_map then force_encounter(0);
+        display_mymsg(MSG_shakes);
+    end
+    if ((time_passed_since_last_consumption > 1.9) and (time_passed_since_last_consumption < 2.1) ) then begin
+        if in_world_map then force_encounter(0);
+        display_mymsg(MSG_cravings);
+    end
+    if ((time_passed_since_last_consumption > 2.9) and (time_passed_since_last_consumption < 3.1) ) then begin
+        if in_world_map then force_encounter(0);
+        display_mymsg(MSG_cravings);
+    end
+    if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, 0); 
+
 end
 
 
@@ -122,7 +139,6 @@ procedure start begin
         register_hook_proc(HOOK_USEOBJON, use_obj_on_obj_handler);
         register_hook_proc(HOOK_USEOBJ, use_obj_handler);
         variable time_of_addiction;
-        timer_shakes = get_sfall_global_int(SGVAR_time_of_alcohol_addiction);
         ndebug("initialized");
         return;
     end
@@ -133,17 +149,6 @@ procedure start begin
 
     time_of_addiction = get_sfall_global_int(SGVAR_time_of_alcohol_addiction);
 
-    // shakes
-    if ((game_time - timer_shakes) >= TIME_ALCOHOLIC_SHAKES) then begin
-        if in_world_map then force_encounter(0);
-        timer_shakes = game_time;
-        if (count > 0) then
-            display_mymsg(MSG_cravings);
-        else
-            display_mymsg(MSG_shakes);
-
-        count = count + 1;
-    end
 
     // relief
     if ((game_time - time_of_addiction) >= TIME_DURATION_OF_ADDICTION) then begin
