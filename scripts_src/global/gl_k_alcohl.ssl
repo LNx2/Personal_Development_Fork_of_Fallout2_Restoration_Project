@@ -38,11 +38,24 @@ variable time_of_addiction;
     or (obj_pid(x) == PID_ROENTGEN_RUM) \
     or (obj_pid(x) == PID_ROT_GUT) )
 
+
 /**
  * Displays message `x` from **game** message file `msg`
  * @arg {int} x - message number
  */
 #define display_mymsg(x) display_msg(message_str_game(msg, x))
+
+
+/**
+ * Displays addiction message
+ * `time` should be something like TIME_ALCOHOLIC_SHAKES
+ * `message` should be something like MSG_shakes or MSG_cravings
+ */
+#define display_addiction_msg(time,message) \
+    if ((time_passed_since_last_consumption > (time - ONE_GAME_HOUR) ) and (time_passed_since_last_consumption < (time + ONE_GAME_HOUR)) ) then begin \
+        if in_world_map then force_encounter(0); \
+        display_mymsg(message); \
+    end
 
 /**
  * Makes target an addict if all checks pass.
@@ -111,23 +124,23 @@ procedure timed_event_p_proc begin
     if (global_var(GVAR_ALCOHOL_ADDICT) != 1) then return;
 
     // Below: has addiction
-    time_passed_since_last_consumption = ( 1.0*( game_time - get_sfall_global_int(SGVAR_time_of_alcohol_addiction) ) ) / (TIME_ALCOHOLIC_SHAKES);
+
     // shakes
+    time_passed_since_last_consumption =  ( game_time - get_sfall_global_int(SGVAR_time_of_alcohol_addiction) ) ;
+
     display_msg("<test> value of the time_passed_since_last_consumption variable is:"+time_passed_since_last_consumption);
-    if ((time_passed_since_last_consumption > 0.9) and (time_passed_since_last_consumption < 1.1) ) then begin
-        if in_world_map then force_encounter(0);
-        display_mymsg(MSG_shakes);
-    end else if ((time_passed_since_last_consumption > 1.9) and (time_passed_since_last_consumption < 2.1) ) then begin
-        if in_world_map then force_encounter(0);
-        display_mymsg(MSG_cravings);
-    end else if ((time_passed_since_last_consumption > 2.9) and (time_passed_since_last_consumption < 3.1) ) then begin
-        if in_world_map then force_encounter(0);
-        display_mymsg(MSG_cravings);
-    end
+
+
+    display_addiction_msg(TIME_ALCOHOLIC_SHAKES,MSG_shakes)
+
+    display_addiction_msg((2*TIME_ALCOHOLIC_SHAKES),MSG_cravings)
+
+    display_addiction_msg((3*TIME_ALCOHOLIC_SHAKES),MSG_cravings)
+
 
     // relief
     time_of_addiction = get_sfall_global_int(SGVAR_time_of_alcohol_addiction);
-    if ((game_time - time_of_addiction) >= TIME_DURATION_OF_ADDICTION) then begin
+    if ((game_time - time_of_addiction) >= (TIME_DURATION_OF_ADDICTION - ONE_GAME_HOUR) ) then begin
         set_global_var(GVAR_ALCOHOL_ADDICT, 0);
         set_critter_stat(dude_obj, STAT_ag, 1);
         set_critter_stat(dude_obj, STAT_ch, 1);
