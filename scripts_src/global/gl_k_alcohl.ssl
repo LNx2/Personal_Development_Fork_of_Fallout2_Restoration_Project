@@ -51,11 +51,12 @@ variable time_for_next_global_timer;
  * Displays addiction message
  * `time` should be something like TIME_ALCOHOLIC_SHAKES
  * `message` should be something like MSG_shakes or MSG_cravings
+ * make sure to match a time intervall, and not just a single point in time to avoid failing because "timed_event_p_proc" is 'off' by a few ticks
  */
 #define display_addiction_msg(time,message) \
-    if ((time_passed_since_last_consumption > (time - ONE_GAME_HOUR) ) and (time_passed_since_last_consumption < (time + ONE_GAME_HOUR)) ) then begin \
+    if ((time_passed_since_last_consumption > ((time) - ONE_GAME_HOUR) ) and (time_passed_since_last_consumption < ((time) + ONE_GAME_HOUR)) ) then begin \
         if in_world_map then force_encounter(0); \
-        display_mymsg(message); \
+        display_mymsg((message)); \
     end
 
 /**
@@ -76,7 +77,10 @@ procedure drink(variable who, variable item) begin
     set_sfall_global(SGVAR_last_drink_date, game_time);
 
     // already addicted
-    if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then return;
+    if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then begin
+        set_sfall_global(SGVAR_time_of_alcohol_addiction, game_time);  // reset addiction time when consuming alcohol, i.e. player needs to be 7 days *clean* to lose addiction
+        return;
+    end
 
     // regular drinking increases chances
     if (time_since_last_drink >= TIME_ALCOHOL_USAGE_SPORADIC) then begin
