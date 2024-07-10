@@ -12,7 +12,6 @@ variable time_of_addiction;
 variable time_for_next_global_timer;
 variable counter;     // <test>
 
-#define LVAR_addiction_message_counter (0)
 #define TIME_ALCOHOL_USAGE_SPORADIC ONE_GAME_WEEK
 #define TIME_ALCOHOL_USAGE_MEDIUM (3*ONE_GAME_DAY)
 #define TIME_ALCOHOLIC_SHAKES (2*ONE_GAME_DAY)
@@ -32,6 +31,7 @@ variable counter;     // <test>
 
 #define SGVAR_last_drink_date "k_alco_d"
 #define SGVAR_time_of_alcohol_addiction "k_alco_a"
+#define SGVAR_addiction_message_counter "k_alco_c"
 
 /**
  * True is `x` is an alcohol bottle, False otherwise.
@@ -58,13 +58,13 @@ variable counter;     // <test>
  * `time` should be something like TIME_ALCOHOLIC_SHAKES
  * `message` should be something like MSG_shakes or MSG_cravings
  * make sure to match a time intervall, and not just a single point in time to avoid failing because "timed_event_p_proc" is 'off' by a few ticks
- * use a counter because "timed_event_p_proc" might be delayed and only run once if dialogue or sleep over several instances
+ * use a counter because "timed_event_p_proc" might be delayed and only run once if a dialogue time forwarding or sleep runs over several instances
  */
 #define display_addiction_msg(time, msg_counter, message) \
-    if ((time_passed_since_last_consumption > ((time) - ONE_GAME_HOUR) ) and  (msg_counter) ==  (local_var(LVAR_addiction_message_counter)) ) then begin \
+    if ((time_passed_since_last_consumption > ((time) - ONE_GAME_HOUR) ) and  (msg_counter) ==  (get_sfall_global_int(SGVAR_addiction_message_counter)) ) then begin \
         if in_world_map then force_encounter(0); \
         display_mymsg((message)); \
-        set_local_var(LVAR_addiction_message_counter,(local_var(LVAR_addiction_message_counter)+1)); \
+        set_sfall_global(SGVAR_addiction_message_counter,(get_sfall_global_int(SGVAR_addiction_message_counter)+1)); \
     end
 
 /**
@@ -112,7 +112,7 @@ procedure drink(variable who, variable item) begin
     if not is_iface_tag_active(INTERFACE_TAG_ADDICT) then show_iface_tag(INTERFACE_TAG_ADDICT);
     set_global_var(GVAR_ALCOHOL_ADDICT, 1);
     set_sfall_global(SGVAR_time_of_alcohol_addiction, game_time);
-    set_local_var(LVAR_addiction_message_counter,0);
+    set_sfall_global(SGVAR_addiction_message_counter, 0);
     add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, 0);
 end
 
