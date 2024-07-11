@@ -10,15 +10,19 @@ variable time_passed_since_last_consumption;
 variable msg;
 variable time_of_addiction;
 variable time_for_next_global_timer;
+variable base_addiction_chance;
+variable usage_monitor_addiction_chance;
 variable counter;     // <test>
 
-#define TIME_ALCOHOL_USAGE_SPORADIC ONE_GAME_WEEK
-#define TIME_ALCOHOL_USAGE_MEDIUM (3*ONE_GAME_DAY)
-#define TIME_ALCOHOLIC_SHAKES (2*ONE_GAME_DAY)
-#define TIME_DURATION_OF_ADDICTION ONE_GAME_WEEK
+#define TIME_ALCOHOL_USAGE_SPORADIC    ONE_GAME_WEEK
+#define TIME_ALCOHOL_USAGE_MEDIUM      (3*ONE_GAME_DAY)
+#define TIME_ALCOHOLIC_SHAKES          (2*ONE_GAME_DAY)
+#define TIME_DURATION_OF_ADDICTION     ONE_GAME_WEEK
 #define TIME_DURATION_FOR_GLOBAL_TIMER ONE_GAME_HOUR
 // #define TIME_DURATION_FOR_GLOBAL_TIMER ONE_GAME_DAY
 #define INTERFACE_TAG_ADDICT 4
+#define ADDICTION_CHECK 0
+#define USAGE_MONITOR_CHECK 1
 
 #define MSG_FILE "k_alcohl.msg"
 #define MSG_became_addicted 1
@@ -32,6 +36,8 @@ variable counter;     // <test>
 #define SGVAR_last_drink_date "k_alco_d"
 #define SGVAR_time_of_alcohol_addiction "k_alco_a"
 #define SGVAR_addiction_message_counter "k_alco_c"
+#define SGVAR_usage_monitor_alcohol "k_alco_u"
+#define SGVAR_time_of_usage_monitor_reduction "k_alco_r"
 
 /**
  * True is `x` is an alcohol bottle, False otherwise.
@@ -45,6 +51,46 @@ variable counter;     // <test>
     or (obj_pid(x) == PID_ROENTGEN_RUM) \
     or (obj_pid(x) == PID_ROT_GUT) )
 
+
+// base addiction probability values for the different alcohol variants; a value of 10 should correspond to a probability of 1 %
+#define BASE_ADDICTION_CHANCE_BEER               10
+#define BASE_ADDICTION_CHANCE_BOOZE              10
+#define BASE_ADDICTION_CHANCE_GAMMA_GULP_BEER    10
+#define BASE_ADDICTION_CHANCE_ABBEY_BOOZE        10
+#define BASE_ADDICTION_CHANCE_ROENTGEN_RUM       10
+#define BASE_ADDICTION_CHANCE_ROT_GUT            10
+
+
+#define USAGE_MONITOR_VALUE_BEER                100
+#define USAGE_MONITOR_VALUE_BOOZE               100
+#define USAGE_MONITOR_VALUE_GAMMA_GULP_BEER     100
+#define USAGE_MONITOR_VALUE_ABBEY_BOOZE         100
+#define USAGE_MONITOR_VALUE_ROENTGEN_RUM        100
+#define USAGE_MONITOR_VALUE_ROT_GUT             100
+
+
+/**
+ * Picks the right base addiction chance for the consumed item 
+ */
+#define base_addiction_chance_evaluation(ITEM) \
+    if (obj_pid(ITEM) == PID_BEER) then base_addiction_chance := BASE_ADDICTION_CHANCE_BEER ; \
+    if (obj_pid(ITEM) == PID_BOOZE) then base_addiction_chance := BASE_ADDICTION_CHANCE_BOOZE ; \
+    if (obj_pid(ITEM) == PID_GAMMA_GULP_BEER) then base_addiction_chance := BASE_ADDICTION_CHANCE_GAMMA_GULP_BEER ; \
+    if (obj_pid(ITEM) == PID_ABBEY_BOOZE) then base_addiction_chance := BASE_ADDICTION_CHANCE_ABBEY_BOOZE ; \
+    if (obj_pid(ITEM) == PID_ROENTGEN_RUM) then base_addiction_chance := BASE_ADDICTION_CHANCE_ROENTGEN_RUM ; \
+    if (obj_pid(ITEM) == PID_ROT_GUT) then base_addiction_chance := BASE_ADDICTION_CHANCE_ROT_GUT ;
+
+
+/**
+ * increases the 'balance' of the player characters 'alcohol account'
+ */
+#define usage_monitor_increase(ITEM) \
+    if (obj_pid(ITEM) == PID_BEER) then set_sfall_global(SGVAR_usage_monitor_alcohol,(get_sfall_global_int(SGVAR_usage_monitor_alcohol)+USAGE_MONITOR_VALUE_BEER)); \
+    if (obj_pid(ITEM) == PID_BOOZE) then set_sfall_global(SGVAR_usage_monitor_alcohol,(get_sfall_global_int(SGVAR_usage_monitor_alcohol)+USAGE_MONITOR_VALUE_BOOZE)); \
+    if (obj_pid(ITEM) == PID_GAMMA_GULP_BEER) then set_sfall_global(SGVAR_usage_monitor_alcohol,(get_sfall_global_int(SGVAR_usage_monitor_alcohol)+USAGE_MONITOR_VALUE_GAMMA_GULP_BEER)); \
+    if (obj_pid(ITEM) == PID_ABBEY_BOOZE) then set_sfall_global(SGVAR_usage_monitor_alcohol,(get_sfall_global_int(SGVAR_usage_monitor_alcohol)+USAGE_MONITOR_VALUE_ABBEY_BOOZE)); \
+    if (obj_pid(ITEM) == PID_ROENTGEN_RUM) then set_sfall_global(SGVAR_usage_monitor_alcohol,(get_sfall_global_int(SGVAR_usage_monitor_alcohol)+USAGE_MONITOR_VALUE_ROENTGEN_RUM)); \
+    if (obj_pid(ITEM) == PID_ROT_GUT) then set_sfall_global(SGVAR_usage_monitor_alcohol,(get_sfall_global_int(SGVAR_usage_monitor_alcohol)+USAGE_MONITOR_VALUE_ROT_GUT));
 
 /**
  * Displays message `x` from **game** message file `msg`
@@ -61,7 +107,7 @@ variable counter;     // <test>
  * use a counter because "timed_event_p_proc" might be delayed and only run once if a dialogue time forwarding or sleep runs over several instances
  */
 #define display_addiction_msg(time, msg_counter, message) \
-    if ((time_passed_since_last_consumption > ((time) - ONE_GAME_HOUR) ) and  (msg_counter) ==  (get_sfall_global_int(SGVAR_addiction_message_counter)) ) then begin \
+    if ((time_passed_since_last_consumption > ((time) - (5*ONE_GAME_MINUTE)) ) and  (msg_counter) ==  (get_sfall_global_int(SGVAR_addiction_message_counter)) ) then begin \
         if in_world_map then force_encounter(0); \
         display_mymsg((message)); \
         set_sfall_global(SGVAR_addiction_message_counter,(get_sfall_global_int(SGVAR_addiction_message_counter)+1)); \
@@ -113,7 +159,7 @@ procedure drink(variable who, variable item) begin
     set_global_var(GVAR_ALCOHOL_ADDICT, 1);
     set_sfall_global(SGVAR_time_of_alcohol_addiction, game_time);
     set_sfall_global(SGVAR_addiction_message_counter, 0);
-    add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, 0);
+    add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, ADDICTION_CHECK);
 end
 
 // Use from main game window (hands)
@@ -134,39 +180,46 @@ end
 procedure timed_event_p_proc begin
     display_msg("<test> timed_event_p_proc has been run, "+fixed_param);
 
-    // no addiction, skip run
-    if (global_var(GVAR_ALCOHOL_ADDICT) != 1) then return;
-
-    // Below: has addiction
-
-    // shakes
-    time_passed_since_last_consumption =  ( game_time - get_sfall_global_int(SGVAR_time_of_alcohol_addiction) ) ;
-
-    counter = counter + 1; // <test>
-    display_msg("<test> value of counter is:"+counter);
-
-    display_msg("<test> value of the time_passed_since_last_consumption variable is:"+time_passed_since_last_consumption);
-
-
-    display_addiction_msg(TIME_ALCOHOLIC_SHAKES,MSG_COUNTER_0,MSG_shakes)
-
-    display_addiction_msg((2*TIME_ALCOHOLIC_SHAKES),MSG_COUNTER_1,MSG_cravings)
-
-    display_addiction_msg((3*TIME_ALCOHOLIC_SHAKES),MSG_COUNTER_2,MSG_cravings)
-
-
-    // relief
-    time_of_addiction = get_sfall_global_int(SGVAR_time_of_alcohol_addiction);
-    if ((game_time - time_of_addiction) >= (TIME_DURATION_OF_ADDICTION - ONE_GAME_HOUR) ) then begin
-        set_global_var(GVAR_ALCOHOL_ADDICT, 0);
-        set_critter_stat(dude_obj, STAT_ag, 1);
-        set_critter_stat(dude_obj, STAT_ch, 1);
-        display_mymsg(MSG_relieved);
-        if not dude_trait(TRAIT_drug_addict) then hide_iface_tag(INTERFACE_TAG_ADDICT);
+    if ( fixed_param == USAGE_MONITOR_CHECK ) then begin
+        if (get_sfall_global_int(SGVAR_usage_monitor_alcohol) != 0) then add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, USAGE_MONITOR_CHECK) ;
     end
 
-    // if still addicted, set timer for next procedure run
-    if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, 0);
+    if ( fixed_param == ADDICTION_CHECK ) then begin
+
+        // no addiction, skip run
+        if (global_var(GVAR_ALCOHOL_ADDICT) != 1) then return;
+
+        // Below: has addiction
+
+        // shakes
+        time_passed_since_last_consumption =  ( game_time - get_sfall_global_int(SGVAR_time_of_alcohol_addiction) ) ;
+
+        counter = counter + 1; // <test>
+        display_msg("<test> value of counter is:"+counter);
+
+        display_msg("<test> value of the time_passed_since_last_consumption variable is:"+time_passed_since_last_consumption);
+
+
+        display_addiction_msg(TIME_ALCOHOLIC_SHAKES,MSG_COUNTER_0,MSG_shakes)
+
+        display_addiction_msg((2*TIME_ALCOHOLIC_SHAKES),MSG_COUNTER_1,MSG_cravings)
+
+        display_addiction_msg((3*TIME_ALCOHOLIC_SHAKES),MSG_COUNTER_2,MSG_cravings)
+
+
+        // relief
+        time_of_addiction = get_sfall_global_int(SGVAR_time_of_alcohol_addiction);
+        if ((game_time - time_of_addiction) >= (TIME_DURATION_OF_ADDICTION - ONE_GAME_HOUR) ) then begin
+            set_global_var(GVAR_ALCOHOL_ADDICT, 0);
+            set_critter_stat(dude_obj, STAT_ag, 1);
+            set_critter_stat(dude_obj, STAT_ch, 1);
+            display_mymsg(MSG_relieved);
+            if not dude_trait(TRAIT_drug_addict) then hide_iface_tag(INTERFACE_TAG_ADDICT);
+        end
+
+        // if still addicted, set timer for next procedure run
+        if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then add_global_timer_event(TIME_DURATION_FOR_GLOBAL_TIMER, ADDICTION_CHECK);
+    end
 
 end
 
@@ -183,9 +236,10 @@ procedure start begin
         variable time_of_addiction;
         counter = 0;          // <test>
 
+        // retrigger the "timed_event_p_proc" procedure after reload
         if (global_var(GVAR_ALCOHOL_ADDICT) == 1) then begin
             time_for_next_global_timer = ( game_time - get_sfall_global_int(SGVAR_time_of_alcohol_addiction) ) % TIME_DURATION_FOR_GLOBAL_TIMER ;
-            add_global_timer_event(time_for_next_global_timer, 0);
+            add_global_timer_event(time_for_next_global_timer, ADDICTION_CHECK);
         end
 
         ndebug("initialized");
